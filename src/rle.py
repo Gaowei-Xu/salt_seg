@@ -1,10 +1,25 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# @Time    : 2018-09-01 15:01
+# IMPORTANT: READ BEFORE DOWNLOADING, COPYING, INSTALLING OR USING.
+#
+#  By downloading, copying, installing or using the software you agree to this license.
+#  If you do not agree to this license, do not download, install,
+#  copy or use the software.
+#
+#
+#       Shanghai ShanMing Information & Technology Ltd. License Agreement
+#                For quant trade strategy and library
+#
+# Copyright (C) 2017, Shanghai ShanMing Information & Technology Ltd., all rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without modification,
+# are NOT permitted.
+#
+# @Time    : 2018/9/2 下午10:42
 # @Author  : Gaowei Xu
 # @Email   : gaowxu@hotmail.com
-# @File    : rle.py
+# @File    : model.py
 
 import numpy as np
 import os
@@ -59,7 +74,7 @@ class RLEncoder(object):
             return runs
 
 
-def unit_test():
+if __name__ == '__main__':
     """
     test for run-length encoding algorithm
     :return:
@@ -86,9 +101,11 @@ def unit_test():
         image = cv2.imread(image_full_path, cv2.IMREAD_GRAYSCALE)
         mask = cv2.imread(mask_full_path, cv2.IMREAD_GRAYSCALE)
 
-        result = codec.encode(mask)
-
-        print result
+        rle_output = codec.encode(mask)
+        assert rle_output == rle_gt
+        if rle_output != rle_gt:
+            print 'Error: run-length codec is wrong!'
+            break
 
 
 
