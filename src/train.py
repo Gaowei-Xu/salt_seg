@@ -98,6 +98,7 @@ def train(args):
                         model.input_data: input_batch,
                         model.ground_truth: gt_batch,
                     })
+                print 'Epoch {} batch {}: loss = {}...'.format(e, batch, loss)
 
                 # add summary and accumulate stats
                 train_writer.add_summary(summary_op, train_step)
@@ -106,7 +107,7 @@ def train(args):
 
             train_loss[e] /= dataloader.train_batch_amount
 
-            for batch in range(dataloader.val_batch_num):
+            for batch in range(dataloader.val_batch_amount):
                 # input_batch shape = [batch_size, height, width]
                 # gt_batch shape = [batch_size, height, width]
                 input_batch, gt_batch, _ = dataloader.next_batch(mode='val')
