@@ -86,19 +86,20 @@ def train(args):
                 # gt_batch shape = [batch_size, height, width]
                 input_batch, gt_batch, _ = dataloader.next_batch(mode='train')
 
-                infer_labels, gt_labels, loss, summary_op, optimizer_ = sess.run(
+                infer_labels, gt_labels, loss, summary_op, optimizer, iou_score = sess.run(
                     fetches=[
                         model.infer_labels,
                         model.gt_labels,
                         model.loss,
                         model.summary_op,
                         model.optimizer,
+                        model.iou_score,
                     ],
                     feed_dict={
                         model.input_data: input_batch,
                         model.ground_truth: gt_batch,
                     })
-                print 'Epoch {} batch {}: loss = {}...'.format(e, batch, loss)
+                print 'Epoch {} batch {}: loss = {}, iou_score = {}...'.format(e, batch, loss, iou_score)
 
                 # add summary and accumulate stats
                 train_writer.add_summary(summary_op, train_step)

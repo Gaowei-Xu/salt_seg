@@ -54,6 +54,8 @@ class UNetModel(object):
         self._loss = None
         self._optimizer = None
         self._summary_op = None
+        self._iou_score = None
+
         self.build_model()
 
     # def build_model(self):
@@ -207,27 +209,22 @@ class UNetModel(object):
             conv1_1 = conv2d(name='conv1_1', inputs=image, filter_shape=[3, 3, 1, 16], strides=[1, 1])
             conv1_2 = conv2d(name='conv1_2', inputs=conv1_1, filter_shape=[3, 3, 16, 16], strides=[1, 1])
             pool_1 = tf.nn.max_pool(conv1_2, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
-            print 'pool_1 shape = {}'.format(pool_1.shape)
 
             conv2_1 = conv2d(name='conv2_1', inputs=pool_1, filter_shape=[3, 3, 16, 48], strides=[1, 1])
             conv2_2 = conv2d(name='conv2_2', inputs=conv2_1, filter_shape=[3, 3, 48, 48], strides=[1, 1])
             pool_2 = tf.nn.max_pool(conv2_2, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
-            print 'pool_2 shape = {}'.format(pool_2.shape)
 
             conv3_1 = conv2d(name='conv3_1', inputs=pool_2, filter_shape=[3, 3, 48, 96], strides=[1, 1])
             conv3_2 = conv2d(name='conv3_2', inputs=conv3_1, filter_shape=[3, 3, 96, 96], strides=[1, 1])
             pool_3 = tf.nn.max_pool(conv3_2, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
-            print 'pool_3 shape = {}'.format(pool_3.shape)
 
             conv4_1 = conv2d(name='conv4_1', inputs=pool_3, filter_shape=[3, 3, 96, 128], strides=[1, 1])
             conv4_2 = conv2d(name='conv4_2', inputs=conv4_1, filter_shape=[3, 3, 128, 128], strides=[1, 1])
             pool_4 = tf.nn.max_pool(conv4_2, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
-            print 'pool_4 shape = {}'.format(pool_4.shape)
 
             # bottom
             conv5_1 = conv2d(name='conv5_1', inputs=pool_4, filter_shape=[3, 3, 128, 192], strides=[1, 1])
             conv5_2 = conv2d(name='conv5_2', inputs=conv5_1, filter_shape=[3, 3, 192, 192], strides=[1, 1])
-            print 'conv5_2 shape = {}'.format(conv5_2.shape)
 
             # net up
             upconv6_1 = upconv2d(name='upconv6_1', inputs=conv5_2, filter_shape=[3, 3, 192, 128], strides=[2, 2])
@@ -240,7 +237,7 @@ class UNetModel(object):
             conv7_2 = conv2d(name='conv7_2', inputs=concat7_1, filter_shape=[3, 3, 192, 96], strides=[1, 1])
             conv7_3 = conv2d(name='conv7_3', inputs=conv7_2, filter_shape=[3, 3, 96, 96], strides=[1, 1])
 
-            upconv8_1 = upconv2d(name='upconv7_1', inputs=conv7_3, filter_shape=[2, 2, 96, 48], strides=[2, 2])
+            upconv8_1 = upconv2d(name='upconv8_1', inputs=conv7_3, filter_shape=[2, 2, 96, 48], strides=[2, 2])
             concat8_1 = tf.concat([upconv8_1, conv2_2], axis=3)
             conv8_2 = conv2d(name='conv8_2', inputs=concat8_1, filter_shape=[3, 3, 96, 48], strides=[1, 1])
             conv8_3 = conv2d(name='conv8_3', inputs=conv8_2, filter_shape=[3, 3, 48, 48], strides=[1, 1])
@@ -249,21 +246,37 @@ class UNetModel(object):
             concat9_1 = tf.concat([upconv9_1, conv1_2], axis=3)
             conv9_2 = conv2d(name='conv9_2', inputs=concat9_1, filter_shape=[3, 3, 32, 16], strides=[1, 1])
             conv9_3 = conv2d(name='conv9_3', inputs=conv9_2, filter_shape=[3, 3, 16, 16], strides=[1, 1])
+
             logits = conv2d(name='conv9_4', inputs=conv9_3, filter_shape=[3, 3, 16, 2], strides=[1, 1], activation=tf.nn.sigmoid)
 
             self._infer_labels = logits[:, :, :, 0]
             #self._infer_labels = tf.round(logits[:, :, :, 0])
 
+        # with tf.variable_scope('loss'):
+        #     gt_labels = tf.reshape(self._ground_truth[:, :, :, 0], shape=[self._batch_size, -1])
+        #     infer_logits = tf.reshape(logits[:, :, :, 0], shape=[self._batch_size, -1])
+        #     infer_labels = tf.reshape(tf.to_int64(logits[:, :, :, 0] > 0.5), shape=[self._batch_size, -1])
+        #     self._loss = tf.reduce_mean(tf.keras.losses.binary_crossentropy(gt_labels, infer_logits))
+        #     score, up_opt = tf.metrics.mean_iou(gt_labels, infer_labels, 2)
+        #     score = tf.identity(score)
+        #
+        # with tf.variable_scope("optimization"):
+        #     train_op = tf.train.AdamOptimizer(self._learning_rate)
+        #     self._optimizer = train_op.minimize(self._loss)
+        #     self._summary_op = tf.summary.merge_all()
+
         with tf.variable_scope("loss"):
             gt_labels = tf.reshape(self._ground_truth[:, :, :, 0], shape=[self._batch_size, -1])
-            infer_logits = tf.reshape(logits[:, :, :, 0], shape=[self._batch_size, -1])
-            intersection = tf.reduce_sum(tf.multiply(infer_logits, gt_labels), 1)
+            infer_probs = tf.reshape(logits[:, :, :, 0], shape=[self._batch_size, -1])
+            #infer_labels = tf.to_float(tf.reshape(tf.to_int64(logits[:, :, :, 0] > 0.5), shape=[self._batch_size, -1]))
 
-            epsilon = tf.constant(value=1e-4)
-            match_rate_batch = (2 * intersection + epsilon) / (tf.reduce_sum(tf.multiply(infer_logits, infer_logits), 1) +
+            # figure out IOU
+            intersection = tf.reduce_sum(tf.multiply(infer_probs, gt_labels), 1)
+            epsilon = tf.constant(value=1e-3)
+            match_rate_batch = (2 * intersection + epsilon) / (tf.reduce_sum(tf.multiply(infer_probs, infer_probs), 1) +
                                                                tf.reduce_sum(tf.multiply(gt_labels, gt_labels), 1) + epsilon)
-            match_rate = tf.reduce_mean(match_rate_batch)
-            self._loss = 1.0 - match_rate
+            self._iou_score = tf.reduce_mean(match_rate_batch)
+            self._loss = 1.0 - self._iou_score
 
             # add summary operations
             tf.summary.scalar('loss', self._loss)
@@ -272,18 +285,6 @@ class UNetModel(object):
             train_op = tf.train.AdamOptimizer(self._learning_rate)
             self._optimizer = train_op.minimize(self._loss)
             self._summary_op = tf.summary.merge_all()
-
-    # def loss_function(y_pred, y_true):
-    #     cost = tf.reduce_mean(tf.keras.losses.binary_crossentropy(y_true, y_pred))
-    #     return cost
-    #
-    # def mean_iou(y_pred, y_true):
-    #     y_pred_ = tf.to_int64(y_pred > 0.5)
-    #     y_true_ = tf.to_int64(y_true > 0.5)
-    #     score, up_opt = tf.metrics.mean_iou(y_true_, y_pred_, 2)
-    #     with tf.control_dependencies([up_opt]):
-    #         score = tf.identity(score)
-    #     return score
 
 
     @property
@@ -314,3 +315,6 @@ class UNetModel(object):
     def input_data(self):
         return self._input_data
 
+    @property
+    def iou_score(self):
+        return self._iou_score

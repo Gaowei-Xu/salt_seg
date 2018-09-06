@@ -256,6 +256,10 @@ class DataLoader(object):
             else:
                 mask = cv2.imread(gt_mask_full_path, cv2.IMREAD_GRAYSCALE)
 
+            image = cv2.resize(image, (self._img_width, self._img_height))
+            mask = cv2.resize(mask, (self._img_width, self._img_height))
+            mask = np.round(mask / 255.0)
+
             # 'raw', 'cw_90', 'cw_180', 'cw_270', 'h_mirror', 'v_mirror'
             if transform == 'raw':
                 pass
@@ -285,6 +289,8 @@ class DataLoader(object):
             feed_images[i] = image_pair         # shape = [self._img_height, self._img_width, self._channels]
             gt_masks[i] = mask_pair             # shape = [self._img_height, self._img_width, self._num_cls]
 
+        # average = np.average(feed_images, axis=0)
+        # feed_images = feed_images - average
         return feed_images, gt_masks
 
     def reset(self):
@@ -311,15 +317,32 @@ class DataLoader(object):
 
 
 if __name__ == '__main__':
-    loader = DataLoader(
-        train_images_root_dir='../dataset/train/images/',
-        train_masks_root_dir='../dataset/train/masks/',
-        test_images_root_dir='../dataset/test/images/',
-        train_batch_size=64,
-        val_batch_size=64,
-        test_batch_size=1,
-        img_width=101,
-        img_height=101
+    from config import set_train_args
+    args = set_train_args()
+    dataloader = DataLoader(
+        train_images_root_dir=args.train_images_root_dir,
+        train_masks_root_dir=args.train_masks_root_dir,
+        test_images_root_dir=args.test_images_root_dir,
+        train_batch_size=args.train_batch_size,
+        val_batch_size=args.val_batch_size,
+        test_batch_size=args.test_batch_size,
+        img_width=args.img_width,
+        img_height=args.img_height
     )
 
+    input_batch, gt_batch, _ = dataloader.next_batch(mode='train')
+    print 'input_batch shape = {}'.format(input_batch.shape)
+    print 'gt_batch shape = {}'.format(gt_batch.shape)
 
+    index = random.randint(0, args.train_batch_size)
+    image = input_batch[index, :, :, 0]
+    mask = gt_batch[index, :, :, 0]
+    print 'image shape = {}'.format(image.shape)
+    print 'mask shape = {}'.format(mask.shape)
+
+    print 'image = {}, sum(image) = {}'.format(image, np.sum(image))
+    print 'mask = {}'.format(mask)
+    cv2.imshow('input', image/255.0)
+    cv2.imshow('mask', mask)
+
+    cv2.waitKey(0)
