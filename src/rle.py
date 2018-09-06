@@ -85,8 +85,8 @@ if __name__ == '__main__':
     train_csv_file_full_path = '../dataset/train.csv'
 
     rf = open(train_csv_file_full_path, 'rb')
-    lines = rf.readlines() - 1  # skip first row
-    amount = len(lines)
+    lines = rf.readlines()   # skip first row
+    amount = len(lines)-1
     codec = RLEncoder()
 
     for i, line in enumerate(lines):
@@ -100,7 +100,8 @@ if __name__ == '__main__':
         mask_full_path = os.path.join(train_masks_root_dir, img_name)
         image = cv2.imread(image_full_path, cv2.IMREAD_GRAYSCALE)
         mask = cv2.imread(mask_full_path, cv2.IMREAD_GRAYSCALE)
-
+        print 'mask = {}'.format(mask)
+        print type(mask[0][0])
         rle_output = codec.encode(mask)
         assert rle_output == rle_gt
         if rle_output != rle_gt:

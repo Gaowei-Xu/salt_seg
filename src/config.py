@@ -126,7 +126,7 @@ def set_deploy_args():
     parser.add_argument('--dump_model_para_root_dir', type=str, default='../model_params/',
                         help='directory path to dump model parameters while training')
 
-    parser.add_argument('--optimal_model_path', type=str, default='epoch6_0.111164_0.111165.ckpt',
+    parser.add_argument('--optimal_model_path', type=str, default='epoch1_0.725810_0.758864.ckpt',
                         help='optimal model path to load from')
 
     args = parser.parse_args()

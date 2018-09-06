@@ -20,12 +20,13 @@
 # @Author  : Gaowei Xu
 # @Email   : gaowxu@hotmail.com
 # @File    : infer.py
-
+import os
 import tensorflow as tf
 from rle import RLEncoder
 from config import set_deploy_args
 from dataloader import DataLoader
 from model import UNetModel
+import numpy as np
 
 
 def infer(args):
@@ -60,7 +61,7 @@ def infer(args):
     wf.write('id,rle_mask\n')
     with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as sess:
         saver = tf.train.Saver()
-        saver.restore(sess, args.optimal_model_path)
+        saver.restore(sess, os.path.join(args.dump_model_para_root_dir, args.optimal_model_path))
 
         dataloader.reset()
 
@@ -81,8 +82,11 @@ def infer(args):
                 })
 
             # process the result of infer_labels
-            rle_bitstream = codec(infer_labels)
+            infer_labels = np.reshape(infer_labels[0], newshape=[args.img_height, args.img_width])
+            infer_labels = np.uint8(np.round(infer_labels) * 255)
+            rle_bitstream = codec.encode(infer_labels)
             wf.write('{},{}\n'.format(img_name, rle_bitstream))
+            print 'Processing batch {} (totally {} batches)...'.format(batch, dataloader.test_batch_amount)
     wf.close()
 
 if __name__ == '__main__':
