@@ -104,7 +104,7 @@ class UNetModel(object):
                 kernel_size=filter_shape[0:2],
                 strides=strides,
                 padding=padding,
-                activation=tf.nn.relu,
+                activation=None,
                 name=name
             )
             return upconv
@@ -153,7 +153,7 @@ class UNetModel(object):
             conv9_2 = conv2d(name='conv9_2', inputs=concat9_1, filter_shape=[3, 3, 32, 16], strides=[1, 1])
             conv9_3 = conv2d(name='conv9_3', inputs=conv9_2, filter_shape=[3, 3, 16, 16], strides=[1, 1])
 
-            conv9_4 = conv2d(name='conv9_4', inputs=conv9_3, filter_shape=[3, 3, 16, 2], strides=[1, 1])
+            conv9_4 = conv2d(name='conv9_4', inputs=conv9_3, filter_shape=[1, 1, 16, 2], strides=[1, 1])
             logits = tf.nn.softmax(conv9_4)
 
             self._infer_labels = logits[:, :, :, 0]
@@ -178,7 +178,6 @@ class UNetModel(object):
             train_op = tf.train.AdamOptimizer(self._learning_rate)
             self._optimizer = train_op.minimize(self._loss)
             self._summary_op = tf.summary.merge_all()
-
 
     @property
     def loss(self):
