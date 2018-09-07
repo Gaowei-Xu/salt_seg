@@ -27,6 +27,7 @@ from config import set_deploy_args
 from dataloader import DataLoader
 from model import UNetModel
 import numpy as np
+import cv2
 
 
 def infer(args):
@@ -48,6 +49,10 @@ def infer(args):
     )
 
     print 'Dataset loading successfully...'
+
+    dump_root_dir = '../dump_comparison/'
+    if not os.path.exists(dump_root_dir):
+        os.makedirs(dump_root_dir)
 
     codec = RLEncoder()
     tf.reset_default_graph()
@@ -84,6 +89,13 @@ def infer(args):
             # process the result of infer_labels
             infer_labels = np.reshape(infer_labels[0], newshape=[args.img_height, args.img_width])
             infer_labels = np.uint8(np.round(infer_labels) * 255)
+
+            print 'gt = {}'.format(gt_batch[0, :, :, 0])
+            print 'infer_labels = {}\n'.format(infer_labels)
+
+            cv2.imwrite(os.path.join(dump_root_dir, '{}_gt_mask.jpg'.format(str(batch))), gt_batch[0, :, :, 0])
+            cv2.imwrite(os.path.join(dump_root_dir, '{}_infer_mask.jpg'.format(str(batch))), infer_labels)
+
             rle_bitstream = codec.encode(infer_labels)
             wf.write('{},{}\n'.format(img_name, rle_bitstream))
             print 'Processing batch {} (totally {} batches)...'.format(batch, dataloader.test_batch_amount)
