@@ -60,7 +60,7 @@ def set_train_args():
     parser.add_argument('--img_height', type=int, default=128,
                         help='height of image/mask')
 
-    parser.add_argument('--learning_rate', type=float, default=0.005,
+    parser.add_argument('--learning_rate', type=float, default=0.01,
                         help='learning rate for RNN')
 
     parser.add_argument('--num_epochs', type=int, default=200,

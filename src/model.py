@@ -268,15 +268,16 @@ class UNetModel(object):
         with tf.variable_scope("loss"):
             gt_labels = tf.reshape(self._ground_truth[:, :, :, 0], shape=[self._batch_size, -1])
             infer_probs = tf.reshape(logits[:, :, :, 0], shape=[self._batch_size, -1])
-            #infer_labels = tf.to_float(tf.reshape(tf.to_int64(logits[:, :, :, 0] > 0.5), shape=[self._batch_size, -1]))
+            infer_labels = tf.to_float(tf.reshape(tf.to_int64(logits[:, :, :, 0] > 0.5), shape=[self._batch_size, -1]))
 
             # figure out IOU
-            intersection = tf.reduce_sum(tf.multiply(infer_probs, gt_labels), 1)
+            intersection = tf.reduce_sum(tf.multiply(infer_labels, gt_labels), 1)
             epsilon = tf.constant(value=1e-3)
-            match_rate_batch = (2 * intersection + epsilon) / (tf.reduce_sum(tf.multiply(infer_probs, infer_probs), 1) +
+            match_rate_batch = (2 * intersection + epsilon) / (tf.reduce_sum(tf.multiply(infer_labels, infer_labels), 1) +
                                                                tf.reduce_sum(tf.multiply(gt_labels, gt_labels), 1) + epsilon)
             self._iou_score = tf.reduce_mean(match_rate_batch)
-            self._loss = 1.0 - self._iou_score
+            # self._loss = 1.0 - self._iou_score
+            self._loss = tf.reduce_mean(tf.keras.losses.binary_crossentropy(gt_labels, infer_probs))
 
             # add summary operations
             tf.summary.scalar('loss', self._loss)
