@@ -268,7 +268,7 @@ class UNetModel(object):
         with tf.variable_scope("loss"):
             gt_labels = tf.reshape(self._ground_truth[:, :, :, 0], shape=[self._batch_size, -1])
             infer_probs = tf.reshape(logits[:, :, :, 0], shape=[self._batch_size, -1])
-            infer_labels = tf.to_float(tf.reshape(tf.to_int64(logits[:, :, :, 0] > 0.5), shape=[self._batch_size, -1]))
+            infer_labels = tf.to_float(tf.round(infer_probs))
 
             # figure out IOU
             intersection = tf.reduce_sum(tf.multiply(infer_labels, gt_labels), 1)
