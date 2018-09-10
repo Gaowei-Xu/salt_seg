@@ -47,7 +47,8 @@ def train(args):
         val_batch_size=args.val_batch_size,
         test_batch_size=args.test_batch_size,
         img_width=args.img_width,
-        img_height=args.img_height
+        img_height=args.img_height,
+        dump_norm_full_path=args.dump_norm_full_path
     )
 
     print 'Dataset loading successfully...'

@@ -25,6 +25,8 @@ import os
 import numpy as np
 import random
 import cv2
+import pickle
+random.seed(1024)
 
 
 class Sample(object):
@@ -79,7 +81,8 @@ class DataLoader(object):
             val_batch_size,
             test_batch_size,
             img_width,
-            img_height
+            img_height,
+            dump_norm_full_path
     ):
         """
         data loader constructor
@@ -96,6 +99,7 @@ class DataLoader(object):
         self._test_batch_size = test_batch_size
         self._img_width = img_width
         self._img_height = img_height
+        self._dump_norm_full_path = dump_norm_full_path
 
         self._train_index = 0
         self._val_index = 0
@@ -110,6 +114,10 @@ class DataLoader(object):
 
         self.load()
 
+        # statistic the average values of input image
+        self._average_pixels = np.zeros(shape=[self._img_height, self._img_width, self._channels])
+        self.mean_calc()
+
         self._train_batch_amount = int(len(self._train_samples) / self._train_batch_size)
         self._val_batch_amount = int(len(self._val_samples) / self._val_batch_size)
         self._test_batch_amount = int(len(self._test_samples) / self._test_batch_size)
@@ -120,6 +128,41 @@ class DataLoader(object):
             len(self._val_samples), self._val_batch_size, self._val_batch_amount)
         print 'Test samples amount = {}, batch size = {}, batch amount = {}.'.format(
             len(self._test_samples), self._test_batch_size, self._test_batch_amount)
+
+    def mean_calc(self):
+        """
+        calculate the average pixel values for training dataset
+        """
+        for sample in self._train_samples:
+            input_image_full_path = sample.input_image_full_path
+            transform = sample.transform
+            _ = sample.mode
+            image = cv2.imread(input_image_full_path, cv2.IMREAD_GRAYSCALE)
+            image = cv2.resize(image, (self._img_width, self._img_height))
+
+            # 'raw', 'cw_90', 'cw_180', 'cw_270', 'h_mirror', 'v_mirror'
+            if transform == 'raw':
+                pass
+            elif transform == 'cw_90':
+                image = np.rot90(image)
+            elif transform == 'cw_180':
+                image = np.rot90(np.rot90(image))
+            elif transform == 'cw_270':
+                image = np.rot90(np.rot90(np.rot90(image)))
+            elif transform == 'h_mirror':
+                image = cv2.flip(image, 1)
+            elif transform == 'v_mirror':
+                image = cv2.flip(image, 0)
+            else:
+                print 'Error: do not support other transformation!'
+                break
+
+            image = np.expand_dims(image, axis=-1)
+            self._average_pixels += image
+        self._average_pixels = self._average_pixels / len(self._train_samples)
+        mean_dump_wf = open(self._dump_norm_full_path, 'wb')
+        pickle.dump(self._average_pixels, mean_dump_wf)
+        print 'Dump mean of images to {}...'.format(self._dump_norm_full_path)
 
     def load(self):
         """
@@ -286,11 +329,10 @@ class DataLoader(object):
             mask = np.expand_dims(mask, axis=-1)
             inverse_mask = 1.0 - mask
             mask_pair = np.concatenate([mask, inverse_mask], axis=-1)
-            feed_images[i] = image_pair         # shape = [self._img_height, self._img_width, self._channels]
-            gt_masks[i] = mask_pair             # shape = [self._img_height, self._img_width, self._num_cls]
+            feed_images[i] = image_pair - self._average_pixels        # shape = [self._img_height, self._img_width, self._channels]
+            gt_masks[i] = mask_pair                                   # shape = [self._img_height, self._img_width, self._num_cls]
 
-        # average = np.average(feed_images, axis=0)
-        # feed_images = feed_images - average
+        feed_images = feed_images
         return feed_images, gt_masks
 
     def reset(self):

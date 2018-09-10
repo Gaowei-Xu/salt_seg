@@ -78,6 +78,9 @@ def set_train_args():
     parser.add_argument('--dump_model_para_root_dir', type=str, default='../model_params/',
                         help='directory path to dump model parameters while training')
 
+    parser.add_argument('--dump_norm_full_path', type=str, default='./mean.pkl',
+                        help='directory path to dump model parameters while training')
+
     args = parser.parse_args()
     return args
 
@@ -126,8 +129,11 @@ def set_deploy_args():
     parser.add_argument('--dump_model_para_root_dir', type=str, default='../model_params/',
                         help='directory path to dump model parameters while training')
 
-    parser.add_argument('--optimal_model_path', type=str, default='epoch1_0.725810_0.758864.ckpt',
+    parser.add_argument('--optimal_model_path', type=str, default='epoch1_5.244999_4.617668.ckpt',
                         help='optimal model path to load from')
+
+    parser.add_argument('--dump_norm_full_path', type=str, default='./mean.pkl',
+                        help='directory path to dump model parameters while training')
 
     args = parser.parse_args()
     return args

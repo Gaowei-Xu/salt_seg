@@ -22,6 +22,7 @@
 # @File    : model.py
 
 import tensorflow as tf
+import numpy as np
 
 
 class UNetModel(object):
@@ -29,6 +30,7 @@ class UNetModel(object):
     UNet model
     Reference:  https://arxiv.org/pdf/1505.04597.pdf
                 https://www.kaggle.com/shenmbsw/data-augmentation-and-tensorflow-u-net
+                https://www.kaggle.com/divrikwicky/u-net-with-simple-resnet-blocks-forked
     """
     def __init__(self, args):
         """
@@ -115,18 +117,22 @@ class UNetModel(object):
             conv1_1 = conv2d(name='conv1_1', inputs=image, filter_shape=[3, 3, 1, 16], strides=[1, 1])
             conv1_2 = conv2d(name='conv1_2', inputs=conv1_1, filter_shape=[3, 3, 16, 16], strides=[1, 1])
             pool_1 = tf.nn.max_pool(conv1_2, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
+            pool_1 = tf.nn.dropout(x=pool_1, keep_prob=0.85)
 
             conv2_1 = conv2d(name='conv2_1', inputs=pool_1, filter_shape=[3, 3, 16, 48], strides=[1, 1])
             conv2_2 = conv2d(name='conv2_2', inputs=conv2_1, filter_shape=[3, 3, 48, 48], strides=[1, 1])
             pool_2 = tf.nn.max_pool(conv2_2, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
+            pool_2 = tf.nn.dropout(x=pool_2, keep_prob=0.85)
 
             conv3_1 = conv2d(name='conv3_1', inputs=pool_2, filter_shape=[3, 3, 48, 96], strides=[1, 1])
             conv3_2 = conv2d(name='conv3_2', inputs=conv3_1, filter_shape=[3, 3, 96, 96], strides=[1, 1])
             pool_3 = tf.nn.max_pool(conv3_2, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
+            pool_3 = tf.nn.dropout(x=pool_3, keep_prob=0.85)
 
             conv4_1 = conv2d(name='conv4_1', inputs=pool_3, filter_shape=[3, 3, 96, 128], strides=[1, 1])
             conv4_2 = conv2d(name='conv4_2', inputs=conv4_1, filter_shape=[3, 3, 128, 128], strides=[1, 1])
             pool_4 = tf.nn.max_pool(conv4_2, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
+            pool_4 = tf.nn.dropout(x=pool_4, keep_prob=0.85)
 
             # bottom
             conv5_1 = conv2d(name='conv5_1', inputs=pool_4, filter_shape=[3, 3, 128, 192], strides=[1, 1])
@@ -137,39 +143,39 @@ class UNetModel(object):
             concat6_1 = tf.concat([upconv6_1, conv4_2], axis=3)
             conv6_2 = conv2d(name='conv6_2', inputs=concat6_1, filter_shape=[3, 3, 256, 128], strides=[1, 1])
             conv6_3 = conv2d(name='conv6_3', inputs=conv6_2, filter_shape=[3, 3, 128, 128], strides=[1, 1])
+            conv6_3 = tf.nn.dropout(x=conv6_3, keep_prob=0.85)
 
             upconv7_1 = upconv2d(name='upconv7_1', inputs=conv6_3, filter_shape=[2, 2, 128, 96], strides=[2, 2])
             concat7_1 = tf.concat([upconv7_1, conv3_2], axis=3)
             conv7_2 = conv2d(name='conv7_2', inputs=concat7_1, filter_shape=[3, 3, 192, 96], strides=[1, 1])
             conv7_3 = conv2d(name='conv7_3', inputs=conv7_2, filter_shape=[3, 3, 96, 96], strides=[1, 1])
+            conv7_3 = tf.nn.dropout(x=conv7_3, keep_prob=0.85)
 
             upconv8_1 = upconv2d(name='upconv8_1', inputs=conv7_3, filter_shape=[2, 2, 96, 48], strides=[2, 2])
             concat8_1 = tf.concat([upconv8_1, conv2_2], axis=3)
             conv8_2 = conv2d(name='conv8_2', inputs=concat8_1, filter_shape=[3, 3, 96, 48], strides=[1, 1])
             conv8_3 = conv2d(name='conv8_3', inputs=conv8_2, filter_shape=[3, 3, 48, 48], strides=[1, 1])
+            conv8_3 = tf.nn.dropout(x=conv8_3, keep_prob=0.85)
 
             upconv9_1 = upconv2d(name='upconv9_1', inputs=conv8_3, filter_shape=[2, 2, 48, 16], strides=[2, 2])
             concat9_1 = tf.concat([upconv9_1, conv1_2], axis=3)
             conv9_2 = conv2d(name='conv9_2', inputs=concat9_1, filter_shape=[3, 3, 32, 16], strides=[1, 1])
             conv9_3 = conv2d(name='conv9_3', inputs=conv9_2, filter_shape=[3, 3, 16, 16], strides=[1, 1])
+            conv9_3 = tf.nn.dropout(x=conv9_3, keep_prob=0.85)
 
-            conv9_4 = conv2d(name='conv9_4', inputs=conv9_3, filter_shape=[1, 1, 16, 2], strides=[1, 1])
-            logits = tf.nn.softmax(conv9_4)
+            logits = conv2d(name='conv9_4', inputs=conv9_3, filter_shape=[1, 1, 16, 1], strides=[1, 1], activation=tf.nn.sigmoid)
 
-            self._infer_labels = logits[:, :, :, 0]
+            self._infer_labels = tf.to_float(tf.round(logits))
 
         with tf.variable_scope("loss"):
             gt_labels = tf.reshape(self._ground_truth[:, :, :, 0], shape=[self._batch_size, -1])
             infer_probs = tf.reshape(logits[:, :, :, 0], shape=[self._batch_size, -1])
-            # infer_labels = tf.to_float(tf.round(infer_probs))
+            infer_labels = tf.to_float(tf.round(infer_probs))
 
             # figure out IOU
-            intersection = tf.reduce_sum(tf.multiply(infer_probs, gt_labels), 1)
-            epsilon = tf.constant(value=1e-3)
-            match_rate_batch = (2 * intersection + epsilon) / (tf.reduce_sum(tf.multiply(infer_probs, infer_probs), 1) +
-                                                               tf.reduce_sum(tf.multiply(gt_labels, gt_labels), 1) + epsilon)
-            self._iou_score = tf.reduce_mean(match_rate_batch)
-            self._loss = 1.0 - self._iou_score
+            self._iou_score = UNetModel.get_iou(gt_labels=gt_labels, infer_labels=infer_labels)
+
+            self._loss = tf.reduce_mean(tf.keras.losses.binary_crossentropy(y_true=gt_labels, y_pred=infer_probs))
 
             # add summary operations
             tf.summary.scalar('loss', self._loss)
@@ -178,6 +184,14 @@ class UNetModel(object):
             train_op = tf.train.AdamOptimizer(self._learning_rate)
             self._optimizer = train_op.minimize(self._loss)
             self._summary_op = tf.summary.merge_all()
+
+    @staticmethod
+    def get_iou(gt_labels, infer_labels):
+        inter = tf.reduce_sum(tf.multiply(gt_labels, infer_labels), axis=-1)
+        union = tf.cast(tf.count_nonzero(tf.add(gt_labels, infer_labels), axis=-1), tf.float32)
+        eps = tf.constant(0.001)
+        iou_score = inter / (union + eps)
+        return tf.reduce_mean(iou_score)
 
     @property
     def loss(self):
