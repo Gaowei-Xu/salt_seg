@@ -42,16 +42,16 @@ def set_train_args():
     parser.add_argument('--test_images_root_dir', type=str, default='../dataset/test/images/',
                         help='root directory of test images')
 
-    parser.add_argument('--train_batch_size', type=int, default=256,
+    parser.add_argument('--train_batch_size', type=int, default=128,
                         help='train batch size')
 
-    parser.add_argument('--val_batch_size', type=int, default=256,
+    parser.add_argument('--val_batch_size', type=int, default=128,
                         help='validation batch size')
 
     parser.add_argument('--test_batch_size', type=int, default=1,
                         help='test batch size')
 
-    parser.add_argument('--batch_size', type=int, default=256,
+    parser.add_argument('--batch_size', type=int, default=128,
                         help='training batch size')
 
     parser.add_argument('--img_width', type=int, default=128,
@@ -60,7 +60,7 @@ def set_train_args():
     parser.add_argument('--img_height', type=int, default=128,
                         help='height of image/mask')
 
-    parser.add_argument('--learning_rate', type=float, default=0.01,
+    parser.add_argument('--learning_rate', type=float, default=0.001,
                         help='learning rate for RNN')
 
     parser.add_argument('--num_epochs', type=int, default=200,

@@ -26,7 +26,7 @@ import numpy as np
 import random
 import cv2
 import pickle
-random.seed(1024)
+random.seed(666)
 
 
 class Sample(object):
